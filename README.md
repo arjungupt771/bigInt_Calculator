@@ -1,68 +1,92 @@
 # BigInt Calculator
 
-A full-stack arbitrary-precision integer calculator built with React,
-TypeScript, Vite, and a Spring Boot backend. The backend implements custom
-integer arithmetic rather than relying on `java.math.BigInteger` for its
-production calculations.
+A full-stack arbitrary-precision integer calculator built with **React, TypeScript, Vite, and Spring Boot**. The backend implements custom integer arithmetic using a base-\(10^9\) chunk representation instead of relying on Java's `BigInteger` for production calculations.
 
 ## Features
 
-- Addition, subtraction, multiplication, division, and modulo.
-- Signed integer arithmetic with arbitrary-length decimal inputs.
-- Base-10^9 chunk representation for the integer magnitude.
-- Karatsuba multiplication available as a separate operation.
-- Modular exponentiation.
-- Automated tests, randomized differential testing, and standalone benchmarks.
+- **Arbitrary-precision arithmetic:** Addition, subtraction, multiplication, division, and modulo.
+- **Signed integer support:** Handles positive numbers, negative numbers, and zero.
+- **Base-\(10^9\) representation:** Stores integer magnitudes as chunks for arithmetic operations.
+- **Karatsuba multiplication:** Provides an alternative multiplication algorithm for larger operands.
+- **Modular exponentiation:** Computes powers under a modulus using exponentiation by squaring.
+- **Correctness testing:** Includes unit tests, regression tests, and randomized differential tests.
+- **Performance benchmarks:** Compares custom arithmetic implementations with Java's `BigInteger`.
+
+## Technology Stack
+
+| Component | Technologies |
+|---|---|
+| Frontend | React, TypeScript, Vite, Tailwind CSS |
+| Backend | Java 17+, Spring Boot |
+| Arithmetic engine | Custom signed integer and base-\(10^9\) magnitude implementations |
+| Testing | JUnit, differential testing against `java.math.BigInteger` |
+| Build tools | npm, Maven Wrapper |
 
 ## Architecture
 
-- **Frontend:** React, TypeScript, Vite, and Tailwind CSS.
-- **Backend:** Java 17-compatible Spring Boot application.
-- **Arithmetic:** Custom signed-integer wrapper and base-10^9 magnitude
-  implementation.
-- **Reference testing:** `java.math.BigInteger` is used in tests and benchmarks
-  to check correctness and compare performance.
+The application separates the user interface, API, and arithmetic implementation.
+
+- **Frontend:** Provides the calculator interface and sends operations to the backend.
+- **REST API:** Exposes the `/api/calculate` endpoint.
+- **`BigInt`:** Provides the public interface for arbitrary-precision integer operations.
+- **`SignedBigIntBase1e9`:** Handles signs and delegates magnitude operations.
+- **`DecimalMagnitudeBase1e9`:** Implements arithmetic on base-\(10^9\) chunks.
+- **Tests and benchmarks:** Verify correctness and measure arithmetic performance.
+
+Java's `BigInteger` is used as a reference in tests and benchmarks, not as the production arithmetic engine.
 
 ## Requirements
 
 - Node.js and npm
 - Java 17 or newer
-- Maven, or the included Maven wrapper
+- Git
+- Maven, or the included Maven Wrapper
 
-## Run locally
+## Getting Started
 
-### 1. Start the backend
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/arjungupt771/bigInt_Calculator.git
+cd bigInt_Calculator
+```
+
+### 2. Start the backend
+
+Open a terminal and run:
 
 ```bash
 cd calculator
 ./mvnw spring-boot:run
 ```
 
-The backend uses Spring Boot's configured default port unless overridden.
-
-Run the backend tests with:
+On Linux or macOS, if the wrapper is not executable, run:
 
 ```bash
-./mvnw clean test
+chmod +x mvnw
+./mvnw spring-boot:run
 ```
 
-### 2. Start the frontend
+The backend starts on the port configured by the Spring Boot application.
 
-In a separate terminal:
+### 3. Start the frontend
+
+Open a second terminal in the repository root:
 
 ```bash
-cd ~/Desktop/bigInt_Calculator
-npm install
+npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite in your terminal.
+Open the local URL displayed by Vite in your terminal.
 
-The backend's calculator endpoint is `POST /api/calculate` and accepts JSON
-containing `num1`, `num2`, and `operation`. Supported operation names are
-`add`, `subtract`, `multiply`, `karatsuba`, `divide`, and `modulo`.
+## API Reference
 
-Example request:
+### `POST /api/calculate`
+
+The endpoint accepts two integer operands as decimal strings and an operation name.
+
+**Example request:**
 
 ```json
 {
@@ -72,28 +96,93 @@ Example request:
 }
 ```
 
-The response contains the result as a decimal string, or an error message if
-the request cannot be processed.
+**Supported operations:**
 
-## Testing and benchmarks
+| Operation | Description |
+|---|---|
+| `add` | Adds the two operands |
+| `subtract` | Subtracts the second operand from the first |
+| `multiply` | Multiplies the operands |
+| `karatsuba` | Performs multiplication using the Karatsuba operation |
+| `divide` | Divides the first operand by the second |
+| `modulo` | Calculates the remainder |
 
-The backend test suite covers arithmetic, signed behavior, division, and
-randomized comparisons against Java's `BigInteger`.
+The response contains the calculated result as a decimal string, or an error message if the request cannot be processed.
 
-Standalone benchmarks are located in
-`calculator/src/test/java/com/bigInt/calculator/core/`. Compile the test
-classes before running them. See `calculator/README.md` for commands.
+## Testing
 
-Benchmark results depend on JVM warm-up, hardware, and workload. Treat the
-included benchmarks as local comparisons, not as a formal performance claim.
+Run the complete backend test suite:
 
-## Integer semantics
+```bash
+cd calculator
+./mvnw clean test
+```
 
-Division truncates toward zero. The remainder follows the sign of the dividend,
-matching Java `BigInteger` division and remainder semantics. Modular
-exponentiation requires a nonnegative exponent and a nonzero modulus.
+The tests cover arithmetic operations, signed values, division behavior, regression cases, and randomized comparisons against Java's `BigInteger`.
+
+## Benchmarks
+
+Standalone benchmark classes are located in:
+
+```text
+calculator/src/test/java/com/bigInt/calculator/core/
+```
+
+Available benchmark classes include:
+
+- `BigIntArithmeticBenchmark`
+- `BigIntDivisionBenchmark`
+
+First compile the test classes:
+
+```bash
+cd calculator
+./mvnw test-compile
+```
+
+Then run a benchmark class from the project root using the compiled test classpath. For example:
+
+```bash
+cd calculator
+java -cp "target/test-classes:target/classes:$(cat classpath.txt)" \
+  com.bigInt.calculator.core.BigIntArithmeticBenchmark
+```
+
+The classpath file must first be generated if the project does not already contain it. You can generate it with:
+
+```bash
+./mvnw dependency:build-classpath \
+  -Dmdep.outputFile=classpath.txt \
+  -Dmdep.includeScope=test
+```
+
+For the division benchmark, replace `BigIntArithmeticBenchmark` with `BigIntDivisionBenchmark`.
+
+**Benchmark note:** These are standalone benchmarks, not a formal JMH benchmark suite. Results depend on JVM warm-up, hardware, operand size, and iteration count. Use them as local comparisons rather than universal performance claims.
+
+## Integer Semantics
+
+- Division truncates toward zero.
+- The remainder has the same sign as the dividend, consistent with Java `BigInteger` semantics.
+- Division and modulo by zero are invalid.
+- Modular exponentiation requires a nonnegative exponent and a nonzero modulus.
+
+## Project Structure
+
+```text
+bigInt_Calculator/
+├── calculator/
+│   ├── src/
+│   │   ├── main/java/       # Spring Boot API and arithmetic engine
+│   │   └── test/java/       # Unit tests and benchmarks
+│   ├── pom.xml
+│   └── mvnw
+├── src/                     # Frontend source
+├── package.json
+├── README.md
+└── ...
+```
 
 ## License
 
-No license has been specified yet. All rights remain with the repository
-owner unless a license is added.
+No license has been specified yet. Unless a license is added, all rights remain with the repository owner.
