@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Generated dependency classpath used by the standalone benchmark
+classpath.txt
+
+# Generated Java Flight Recorder profiling output
+*.jfr
