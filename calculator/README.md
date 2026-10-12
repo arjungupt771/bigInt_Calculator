@@ -1,47 +1,84 @@
 # BigInt Calculator Backend
 
-This directory contains the Spring Boot backend and the custom arbitrary-precision
-`BigInt` implementation.
+Spring Boot backend for the BigInt Calculator. Its custom `BigInt` API delegates
+to a signed integer implementation backed by base-10^9 magnitude chunks.
+
+## Implementation
+
+- **Magnitude representation:** little-endian `int[]` chunks, each storing a
+  base-10^9 digit.
+- **Signed arithmetic:** a signed wrapper handles sign and magnitude separately.
+- **Arithmetic operations:** addition, subtraction, multiplication, division,
+  and remainder.
+- **Multiplication:** grade-school multiplication and an explicit Karatsuba
+  operation.
+- **Modular exponentiation:** exponentiation by squaring.
+- **Correctness testing:** deterministic unit tests and randomized differential
+  tests against `java.math.BigInteger`.
+
+The Java `BigInteger` implementation is used as a test and benchmark reference;
+it is not the production arithmetic engine.
+
+## Requirements
+
+- Java 17 or newer
+- Maven, or the included Maven wrapper
+
+## Run the application
+
+From this directory:
+
+```bash
+./mvnw spring-boot:run
+```
 
 ## Run the tests
 
-From this directory, run:
-
 ```bash
-./mvnw test
+./mvnw clean test
 ```
 
-If Maven is installed locally, you can also run:
+## Run the standalone benchmarks
+
+Compile test classes and generate the test dependency classpath:
 
 ```bash
-mvn test
+./mvnw test-compile dependency:build-classpath \
+  -Dmdep.outputFile=classpath.txt \
+  -DincludeScope=test
 ```
 
-The division tests compare quotient and remainder behavior against Java
-`BigInteger`, including large operands, randomized inputs, and signed edge cases.
-Division truncates toward zero, and the remainder has the same sign as the
-dividend.
-
-## Run the division benchmark
-
-Compile the project tests first, then run the standalone benchmark:
+Run the arithmetic benchmark:
 
 ```bash
-./mvnw test-compile dependency:build-classpath -Dmdep.outputFile=classpath.txt -DincludeScope=test
-java -cp "target/test-classes:target/classes:$(cat classpath.txt)" com.bigint.calculator.core.BigIntDivisionBenchmark
+java -cp "target/test-classes:target/classes:$(cat classpath.txt)" \
+  com.bigint.calculator.core.BigIntArithmeticBenchmark
 ```
 
-The benchmark uses warm-up rounds, repeated measurements, alternating execution
-order, and median per-operation times. It is intended for local comparisons, not
-as a substitute for JMH or a controlled performance study.
+Run the division benchmark:
 
-## Division implementation notes
+```bash
+java -cp "target/test-classes:target/classes:$(cat classpath.txt)" \
+  com.bigint.calculator.core.BigIntDivisionBenchmark
+```
 
-- Decimal digits remain stored least-significant first in `BigInt`.
-- Long division keeps its working remainder most-significant first, so appending
-  the next dividend digit does not shift the entire remainder list.
-- Multiples of the absolute divisor from 0 through 9 are precomputed once per
-  division. Binary search compares against those cached multiples rather than
-  allocating a new `BigInt` for every search probe.
-- The selected divisor multiple is subtracted in place from the working
-  remainder.
+These standalone benchmarks perform correctness checks, warm-up, and repeated
+measurements. They are useful for local comparisons, but they are not a
+substitute for JMH or a controlled performance study. Results depend on JVM
+warm-up, system load, operand sizes, and the selected workloads.
+
+The production `BigInt` and the standalone `SignedBigIntBase1e9` prototype use
+the same underlying arithmetic implementation. Their timings should not be
+interpreted as a comparison between independent algorithms.
+
+## Arithmetic semantics
+
+- Division truncates toward zero.
+- The remainder has the sign of the dividend.
+- Division and modulo by zero throw an arithmetic exception.
+- Modular exponentiation rejects negative exponents and zero moduli.
+
+## Compatibility
+
+The public `BigInt` class provides the calculator's integer API. The base-10^9
+implementation classes support that API internally.
